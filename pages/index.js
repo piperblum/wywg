@@ -36,7 +36,23 @@ export default function Home() {
   const [signed, setSigned] = useState({})
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  const [prompt, setPrompt] = useState('')
 
+  const giveRandomPrompt = () => {
+    const prompts = [
+      "What made you smile today?",
+      "Describe a challenge you overcame recently.",
+      "Write about something you're grateful for.",
+      "What is a goal you have for this week?",
+      "Recall a funny or surprising moment from today.",
+      "If you could travel anywhere tomorrow, where would you go?",
+      "Write about someone who inspired you recently.",
+      "Describe a memory that makes you happy."
+    ]
+    const randomPrompt = prompts[Math.floor(Math.random() * prompts.length)]
+    setPrompt(randomPrompt)
+    //setNewEntry(randomPrompt) // optional: fills the textarea
+  }
   // auth
   useEffect(() => {
     (async () => {
@@ -172,7 +188,7 @@ export default function Home() {
   }
 
   const activeGroup = groups.find(g => g.id === activeGroupId)
-
+  const isUnlocked = activeGroup ? new Date(activeGroup.unlock_at) <= new Date() : false
   return (
     <main className={styles.container}>
       <header className={styles.header}>
@@ -232,66 +248,93 @@ export default function Home() {
       {activeGroupId && (
         <>
           <section className={styles.card}>
-            <h2>New Entry</h2>
-            <textarea className={styles.textarea} rows={5}
-              placeholder="Write a note to your group…" value={newEntry}
-              onChange={(e) => setNewEntry(e.target.value)} />
-            <div className={styles.actions}>
-              <button className={styles.btnPrimary} onClick={addEntry} disabled={busy || !newEntry.trim()}>
-                Submit Text
-              </button>
-              <label className={styles.fileLabel}>
-                <input type="file" onChange={uploadFile} className={styles.fileInput}/>
-                Upload File
-              </label>
-            </div>
-          </section>
+  <h2>New Entry</h2>
+
+  {/* Random Prompt Button */}
+  <div style={{ marginBottom: 8 }}>
+    <button
+      className={styles.btn}
+      onClick={giveRandomPrompt} // or inline function if you prefer
+    >
+      Give me a prompt!
+    </button>
+  </div>
+
+  {/* Optional prompt display */}
+  {prompt && <p style={{ fontStyle: 'italic', marginTop: 4 }}>{prompt}</p>}
+
+  {/* Entry Textarea */}
+  <textarea className={styles.textarea} rows={5}
+    placeholder="Write a note to your group…" value={newEntry}
+    onChange={(e) => setNewEntry(e.target.value)} />
+
+  {/* Actions */}
+  <div className={styles.actions}>
+    <button className={styles.btnPrimary} onClick={addEntry} disabled={busy || !newEntry.trim()}>
+      Submit Text
+    </button>
+    <label className={styles.fileLabel}>
+      <input type="file" onChange={uploadFile} className={styles.fileInput}/>
+      Upload File
+    </label>
+  </div>
+</section>
 
           {/* Text Entries */}
           <section className={styles.card}>
-            <h2>Entries</h2>
-            <p className={styles.helper}>
-              If nothing shows, either it’s empty <b>or not unlocked yet</b> — that’s by design.
-            </p>
-            <ul className={styles.list}>
-              {entries.filter(e => e.entry_text).map(e => (
-                <li key={e.id} className={styles.listItem}>
-                  <div className={styles.itemMeta}>{new Date(e.created_at).toLocaleString()}</div>
-                  <div className={styles.itemText}>{e.entry_text}</div>
-                </li>
-              ))}
-              {!entries.some(e => e.entry_text) && <li className={styles.empty}>No text entries yet.</li>}
-            </ul>
-          </section>
+           <h2>Entries</h2>
+              {!isUnlocked && (
+               <p className={styles.helper}>This group is still locked until {new Date(activeGroup.unlock_at).toLocaleString()}</p>
+              )}
+              {isUnlocked ? (
+                 <ul className={styles.list}>
+                   {entries.filter(e => e.entry_text).map(e => (
+                   <li key={e.id} className={styles.listItem}>
+          <div className={styles.itemMeta}>{new Date(e.created_at).toLocaleString()}</div>
+          <div className={styles.itemText}>{e.entry_text}</div>
+        </li>
+      ))}
+      {!entries.some(e => e.entry_text) && <li className={styles.empty}>No text entries yet.</li>}
+    </ul>
+  ) : (
+    <p className={styles.empty}>Locked 🔒</p>
+  )}
+</section>
 
-          {/* Media Gallery */}
-          <section className={styles.card}>
-            <h2>Media</h2>
-            <p className={styles.helper}>Pictures/videos are also hidden until unlock time.</p>
-            <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-              {entries.filter(e => e.media_url).map(e => {
-                const sUrl = e.media_url ? signed[e.media_url] : null
-                const kind = e.media_url ? guessType(e.media_url) : null
-                return (
-                  <div key={e.id} style={{ textAlign: 'center' }}>
-                    <div className={styles.itemMeta}>{new Date(e.created_at).toLocaleString()}</div>
-                    {sUrl && kind === 'image' && (
-                      <img src={sUrl} alt="uploaded"
-                           style={{ marginTop: 8, width: '100%', borderRadius: 12, border: '1px solid var(--border)' }}/>
-                    )}
-                    {sUrl && kind === 'video' && (
-                      <video src={sUrl} controls
-                             style={{ marginTop: 8, width: '100%', borderRadius: 12, border: '1px solid var(--border)' }}/>
-                    )}
-                    {e.media_url && !sUrl && (
-                      <div className={styles.itemMedia}>(Locked or unavailable) {e.media_url}</div>
-                    )}
-                  </div>
-                )
-              })}
-              {!entries.some(e => e.media_url) && <p className={styles.empty}>No media uploaded yet.</p>}
-            </div>
-          </section>
+         {/* Media Gallery */}
+<section className={styles.card}>
+  <h2>Media</h2>
+  {!isUnlocked && (
+    <p className={styles.helper}>
+      This group is locked until {new Date(activeGroup.unlock_at).toLocaleString()}
+    </p>
+  )}
+  {isUnlocked ? (
+    <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+      {entries.filter(e => e.media_url).map(e => {
+        const sUrl = e.media_url ? signed[e.media_url] : null
+        const kind = e.media_url ? guessType(e.media_url) : null
+        return (
+          <div key={e.id} style={{ textAlign: 'center' }}>
+            <div className={styles.itemMeta}>{new Date(e.created_at).toLocaleString()}</div>
+            {sUrl && kind === 'image' && (
+              <img src={sUrl} alt="uploaded"
+                   style={{ marginTop: 8, width: '100%', borderRadius: 12, border: '1px solid var(--border)' }}/>
+            )}
+            {sUrl && kind === 'video' && (
+              <video src={sUrl} controls
+                     style={{ marginTop: 8, width: '100%', borderRadius: 12, border: '1px solid var(--border)' }}/>
+            )}
+          </div>
+        )
+      })}
+      {!entries.some(e => e.media_url) && <p className={styles.empty}>No media uploaded yet.</p>}
+    </div>
+  ) : (
+    <p className={styles.empty}>🔒 Media is hidden until unlock time</p>
+  )}
+</section>
+
         </>
       )}
     </main>
